@@ -63,13 +63,15 @@ exports.getOpenJobs = async (req, res) => {
     const worker = await Worker.findOne({ userId: req.userId });
 
     if (!worker) {
-      return res.status(404).json({ message: "Worker profile not found" });
+      return res.status(404).json({
+        message: "Worker profile not found"
+      });
     }
 
     const jobs = await Job.find({
       $or: [
         { status: "open" },
-        { selectedWorker: worker._id } // job assigned to this worker
+        { selectedWorker: worker._id }
       ]
     }).populate("hirerId", "name");
 
@@ -94,11 +96,15 @@ exports.applyToJob = async (req, res) => {
     const job = await Job.findById(jobId);
 
     if (!job) {
-      return res.status(404).json({ message: "Job not found" });
+      return res.status(404).json({
+        message: "Job not found"
+      });
     }
 
     if (job.status !== "open") {
-      return res.status(400).json({ message: "Job is not open" });
+      return res.status(400).json({
+        message: "Job is not open"
+      });
     }
 
     const alreadyApplied = job.applicants.some(
@@ -106,14 +112,18 @@ exports.applyToJob = async (req, res) => {
     );
 
     if (alreadyApplied) {
-      return res.status(400).json({ message: "Already applied" });
+      return res.status(400).json({
+        message: "Already applied"
+      });
     }
 
     job.applicants.push(workerId);
 
     await job.save();
 
-    res.json({ message: "Application submitted" });
+    res.json({
+      message: "Application submitted"
+    });
 
   } catch (error) {
     console.log(error);
@@ -160,7 +170,9 @@ exports.selectWorker = async (req, res) => {
     const job = await Job.findById(jobId);
 
     if (!job) {
-      return res.status(404).json({ message: "Job not found" });
+      return res.status(404).json({
+        message: "Job not found"
+      });
     }
 
     job.selectedWorker = workerId;
@@ -168,7 +180,10 @@ exports.selectWorker = async (req, res) => {
 
     await job.save();
 
-    res.json({ message: "Worker selected", job });
+    res.json({
+      message: "Worker selected",
+      job
+    });
 
   } catch (error) {
     console.log(error);
@@ -191,18 +206,25 @@ exports.acceptJob = async (req, res) => {
     const job = await Job.findById(jobId);
 
     if (!job) {
-      return res.status(404).json({ message: "Job not found" });
+      return res.status(404).json({
+        message: "Job not found"
+      });
     }
 
     if (!job.selectedWorker || job.selectedWorker.toString() !== worker._id.toString()) {
-      return res.status(403).json({ message: "Not your job" });
+      return res.status(403).json({
+        message: "You are not selected for this job"
+      });
     }
 
     job.status = "in-progress";
+    job.startTime = new Date();
 
     await job.save();
 
-    res.json({ message: "Job accepted" });
+    res.json({
+      message: "Job accepted"
+    });
 
   } catch (error) {
     console.log(error);
@@ -223,14 +245,19 @@ exports.completeJob = async (req, res) => {
     const job = await Job.findById(jobId);
 
     if (!job) {
-      return res.status(404).json({ message: "Job not found" });
+      return res.status(404).json({
+        message: "Job not found"
+      });
     }
 
     job.status = "completed";
+    job.completionTime = new Date();
 
     await job.save();
 
-    res.json({ message: "Job completed" });
+    res.json({
+      message: "Job completed"
+    });
 
   } catch (error) {
     console.log(error);
@@ -258,14 +285,34 @@ exports.rateWorker = async (req, res) => {
     const job = await Job.findById(jobId);
 
     if (!job) {
-      return res.status(404).json({ message: "Job not found" });
+      return res.status(404).json({
+        message: "Job not found"
+      });
     }
 
     job.rating = rating;
-
     await job.save();
 
-    res.json({ message: "Worker rated successfully" });
+    // update worker reliability
+    const worker = await Worker.findById(job.selectedWorker);
+
+    if (worker) {
+
+      worker.completedJobs += 1;
+
+      const totalRatings = worker.totalJobs + 1;
+
+      worker.reliabilityScore =
+        ((worker.reliabilityScore * worker.totalJobs) + rating) / totalRatings;
+
+      worker.totalJobs += 1;
+
+      await worker.save();
+    }
+
+    res.json({
+      message: "Worker rated successfully"
+    });
 
   } catch (error) {
     console.log(error);

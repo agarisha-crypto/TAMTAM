@@ -10,7 +10,8 @@ const JobSchema = new mongoose.Schema({
 
   title: {
     type: String,
-    required: true
+    required: true,
+    trim: true
   },
 
   description: {
@@ -33,7 +34,7 @@ const JobSchema = new mongoose.Schema({
     required: true
   },
 
-  // Job lifecycle
+  // Job lifecycle state
   status: {
     type: String,
     enum: ["open", "pending", "in-progress", "completed"],
@@ -48,6 +49,14 @@ const JobSchema = new mongoose.Schema({
     }
   ],
 
+  // AI suggested workers (future feature)
+  matchedWorkers: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Worker"
+    }
+  ],
+
   // Worker selected by hirer
   selectedWorker: {
     type: mongoose.Schema.Types.ObjectId,
@@ -55,7 +64,7 @@ const JobSchema = new mongoose.Schema({
     default: null
   },
 
-  // Rating after completion
+  // Rating given by hirer
   rating: {
     type: Number,
     min: 1,
@@ -63,10 +72,22 @@ const JobSchema = new mongoose.Schema({
     default: null
   },
 
-  // Optional comment from hirer
+  // Optional feedback
   review: {
     type: String,
     default: ""
+  },
+
+  // Time when job actually started
+  startTime: {
+    type: Date,
+    default: null
+  },
+
+  // Time when job completed
+  completionTime: {
+    type: Date,
+    default: null
   }
 
 }, { timestamps: true });
