@@ -69,10 +69,17 @@ exports.getOpenJobs = async (req, res) => {
     }
 
     const jobs = await Job.find({
+
       $or: [
         { status: "open" },
-        { selectedWorker: worker._id }
+
+        {
+          selectedWorker: worker._id,
+          status: { $in: ["pending", "in-progress"] }
+        }
+
       ]
+
     }).populate("hirerId", "name");
 
     res.json(jobs);
@@ -91,7 +98,15 @@ exports.getOpenJobs = async (req, res) => {
 exports.applyToJob = async (req, res) => {
   try {
 
-    const { jobId, workerId } = req.params;
+    const { jobId } = req.params;
+
+    const worker = await Worker.findOne({ userId: req.userId });
+
+    if (!worker) {
+      return res.status(404).json({
+        message: "Worker profile not found"
+      });
+    }
 
     const job = await Job.findById(jobId);
 
@@ -108,7 +123,7 @@ exports.applyToJob = async (req, res) => {
     }
 
     const alreadyApplied = job.applicants.some(
-      id => id.toString() === workerId
+      id => id.toString() === worker._id.toString()
     );
 
     if (alreadyApplied) {
@@ -117,7 +132,7 @@ exports.applyToJob = async (req, res) => {
       });
     }
 
-    job.applicants.push(workerId);
+    job.applicants.push(worker._id);
 
     await job.save();
 
@@ -175,6 +190,12 @@ exports.selectWorker = async (req, res) => {
       });
     }
 
+    if (job.hirerId.toString() !== req.userId) {
+      return res.status(403).json({
+        message: "Not authorized"
+      });
+    }
+
     job.selectedWorker = workerId;
     job.status = "pending";
 
@@ -211,9 +232,17 @@ exports.acceptJob = async (req, res) => {
       });
     }
 
-    if (!job.selectedWorker || job.selectedWorker.toString() !== worker._id.toString()) {
+    if (!job.selectedWorker ||
+        job.selectedWorker.toString() !== worker._id.toString()) {
+
       return res.status(403).json({
         message: "You are not selected for this job"
+      });
+    }
+
+    if (job.status !== "pending") {
+      return res.status(400).json({
+        message: "Job cannot be accepted"
       });
     }
 
@@ -247,6 +276,12 @@ exports.completeJob = async (req, res) => {
     if (!job) {
       return res.status(404).json({
         message: "Job not found"
+      });
+    }
+
+    if (job.hirerId.toString() !== req.userId) {
+      return res.status(403).json({
+        message: "Not authorized"
       });
     }
 
@@ -293,19 +328,20 @@ exports.rateWorker = async (req, res) => {
     job.rating = rating;
     await job.save();
 
-    // update worker reliability
     const worker = await Worker.findById(job.selectedWorker);
 
     if (worker) {
 
       worker.completedJobs += 1;
+      worker.totalJobs += 1;
 
-      const totalRatings = worker.totalJobs + 1;
+      const completionRate =
+        worker.completedJobs / worker.totalJobs;
+
+      const ratingScore = rating / 5;
 
       worker.reliabilityScore =
-        ((worker.reliabilityScore * worker.totalJobs) + rating) / totalRatings;
-
-      worker.totalJobs += 1;
+        (0.6 * completionRate + 0.4 * ratingScore) * 100;
 
       await worker.save();
     }

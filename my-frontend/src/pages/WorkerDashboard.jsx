@@ -7,6 +7,7 @@ function WorkerDashboard() {
 
   const [jobs, setJobs] = useState([]);
   const [message, setMessage] = useState("");
+  const [workerId, setWorkerId] = useState(null);
 
 
 
@@ -26,7 +27,6 @@ function WorkerDashboard() {
 
       try {
 
-        // Ask backend if worker profile exists
         const response = await fetch(
           "http://localhost:5000/api/workers/me",
           {
@@ -43,7 +43,7 @@ function WorkerDashboard() {
 
         const worker = await response.json();
 
-        // Store workerId for future requests
+        setWorkerId(worker._id);
         localStorage.setItem("workerId", worker._id);
 
         fetchJobs();
@@ -62,7 +62,7 @@ function WorkerDashboard() {
 
 
   // ==========================
-  // FETCH OPEN JOBS
+  // FETCH JOBS
   // ==========================
   const fetchJobs = async () => {
 
@@ -97,12 +97,11 @@ function WorkerDashboard() {
 
 
   // ==========================
-  // APPLY TO JOB
+  // APPLY JOB
   // ==========================
   const applyJob = async (jobId) => {
 
     const token = localStorage.getItem("token");
-    const workerId = localStorage.getItem("workerId");
 
     try {
 
@@ -181,6 +180,7 @@ function WorkerDashboard() {
     localStorage.removeItem("workerId");
 
     navigate("/");
+
   };
 
 
@@ -246,10 +246,7 @@ function WorkerDashboard() {
 
               <button
                 onClick={() => applyJob(job._id)}
-                style={{
-                  marginTop: "10px",
-                  padding: "8px 15px"
-                }}
+                style={{ marginTop: "10px", padding: "8px 15px" }}
               >
                 Apply
               </button>
@@ -259,7 +256,8 @@ function WorkerDashboard() {
 
 
             {/* ACCEPT JOB BUTTON */}
-            {job.status === "pending" && (
+            {job.status === "pending" &&
+             job.selectedWorker === workerId && (
 
               <button
                 onClick={() => acceptJob(job._id)}
@@ -272,6 +270,30 @@ function WorkerDashboard() {
               >
                 Accept Job
               </button>
+
+            )}
+
+
+
+            {/* IN PROGRESS MESSAGE */}
+            {job.status === "in-progress" &&
+             job.selectedWorker === workerId && (
+
+              <p style={{ color: "green", marginTop: "10px" }}>
+                Job in progress
+              </p>
+
+            )}
+
+
+
+            {/* COMPLETED */}
+            {job.status === "completed" &&
+             job.selectedWorker === workerId && (
+
+              <p style={{ color: "blue", marginTop: "10px" }}>
+                Job completed
+              </p>
 
             )}
 
