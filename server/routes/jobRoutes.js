@@ -29,8 +29,9 @@ router.get("/open", authMiddleware, getOpenJobs);
 
 // ==============================
 // WORKER APPLIES TO JOB
+// (workerId removed for security)
 // ==============================
-router.post("/:jobId/apply/:workerId", authMiddleware, applyToJob);
+router.post("/:jobId/apply", authMiddleware, applyToJob);
 
 
 // ==============================

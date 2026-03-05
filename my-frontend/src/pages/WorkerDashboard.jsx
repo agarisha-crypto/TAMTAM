@@ -106,7 +106,7 @@ function WorkerDashboard() {
     try {
 
       const response = await fetch(
-        `http://localhost:5000/api/jobs/${jobId}/apply/${workerId}`,
+        `http://localhost:5000/api/jobs/${jobId}/apply`,
         {
           method: "POST",
           headers: {

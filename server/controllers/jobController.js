@@ -108,33 +108,23 @@ exports.applyToJob = async (req, res) => {
       });
     }
 
-    const job = await Job.findById(jobId);
-
-    if (!job) {
-      return res.status(404).json({
-        message: "Job not found"
-      });
-    }
-
-    if (job.status !== "open") {
-      return res.status(400).json({
-        message: "Job is not open"
-      });
-    }
-
-    const alreadyApplied = job.applicants.some(
-      id => id.toString() === worker._id.toString()
+    const job = await Job.findOneAndUpdate(
+      {
+        _id: jobId,
+        status: "open",
+        applicants: { $ne: worker._id }   // only update if worker not already applied
+      },
+      {
+        $addToSet: { applicants: worker._id } // prevents duplicates
+      },
+      { new: true }
     );
 
-    if (alreadyApplied) {
+    if (!job) {
       return res.status(400).json({
-        message: "Already applied"
+        message: "Already applied or job not available"
       });
     }
-
-    job.applicants.push(worker._id);
-
-    await job.save();
 
     res.json({
       message: "Application submitted"
@@ -142,10 +132,11 @@ exports.applyToJob = async (req, res) => {
 
   } catch (error) {
     console.log(error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({
+      message: "Server error"
+    });
   }
 };
-
 
 
 // =============================
